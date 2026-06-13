@@ -1,0 +1,43 @@
+name: Deploy Vibe Runner Neo to Pages
+
+on:
+  # Jab bhi aap main branch par code push karoge, yeh run hoga
+  push:
+    branches: ["main"]
+
+  # Aap GitHub website se manually bhi ise run kar sakte ho
+  workflow_dispatch:
+
+# Permissions set karna jo Pages par deploy karne ke liye chahiye
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Ek deploy job create karna
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Humara saara code root folder me hi hai (index.html, script.js, style.css)
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
