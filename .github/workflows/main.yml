@@ -1,0 +1,77 @@
+name: Build Android APK and AAB
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. GitHub se code checkout karna
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Node.js environment setup karna
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Java Environment setup karna (Android build ke liye zaroori hai)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 4. Web code ko 'www' folder me shift karna (Capacitor ki requirement)
+      - name: Prepare Web Assets
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp style.css www/
+          cp script.js www/
+
+      # 5. Capacitor Libraries install karna aur initialize karna
+      - name: Install & Init Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Vibe Runner Neo" "com.viberunner.neo" --web-dir=www --packagemanager=npm
+          npx cap add android
+
+      # 6. Android SDK tools config aur Gradle permissions set karna
+      - name: Setup Android Project
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+
+      # 7. APK file banana (Debug Testing Ke Liye)
+      - name: Build Android APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      # 8. AAB file banana (Google Play Store Par Upload Karne Ke Liye)
+      - name: Build Android App Bundle (AAB)
+        run: |
+          cd android
+          ./gradlew bundleDebug
+
+      # 9. APK File ko GitHub par download karne ke liye upload karna
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibe-Runner-Neo-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # 10. AAB File ko GitHub par download karne ke liye upload karna
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibe-Runner-Neo-AAB
+          path: android/app/build/outputs/bundle/debug/app-debug.aab
