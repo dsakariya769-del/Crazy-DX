@@ -1,43 +1,77 @@
-name: Deploy Vibe Runner Neo to Pages
+name: Build Android APK and AAB
 
 on:
-  # Jab bhi aap main branch par code push karoge, yeh run hoga
   push:
     branches: ["main"]
-
-  # Aap GitHub website se manually bhi ise run kar sakte ho
   workflow_dispatch:
 
-# Permissions set karna jo Pages par deploy karne ke liye chahiye
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Ek deploy job create karna
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-android:
     runs-on: ubuntu-latest
+
     steps:
+      # 1. GitHub se code checkout karna
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Artifact
-        uses: actions/upload-pages-artifact@v3
+      # 2. Node.js environment setup karna
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          # Humara saara code root folder me hi hai (index.html, script.js, style.css)
-          path: '.'
+          node-version: 20
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # 3. Java Environment setup karna (Android build ke liye zaroori hai)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 4. Web code ko 'www' folder me shift karna (Capacitor ki requirement)
+      - name: Prepare Web Assets
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp style.css www/
+          cp script.js www/
+
+      # 5. Capacitor Libraries install karna aur initialize karna
+      - name: Install & Init Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Vibe Runner Neo" "com.viberunner.neo" --web-dir=www --packagemanager=npm
+          npx cap add android
+
+      # 6. Android SDK tools config aur Gradle permissions set karna
+      - name: Setup Android Project
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+
+      # 7. APK file banana (Debug Testing Ke Liye)
+      - name: Build Android APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      # 8. AAB file banana (Google Play Store Par Upload Karne Ke Liye)
+      - name: Build Android App Bundle (AAB)
+        run: |
+          cd android
+          ./gradlew bundleDebug
+
+      # 9. APK File ko GitHub par download karne ke liye upload karna
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibe-Runner-Neo-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # 10. AAB File ko GitHub par download karne ke liye upload karna
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibe-Runner-Neo-AAB
+          path: android/app/build/outputs/bundle/debug/app-debug.aab
