@@ -35,12 +35,12 @@ jobs:
           cp style.css www/
           cp script.js www/
 
-      # 5. Capacitor Libraries install karna aur initialize karna
+      # 5. Capacitor Libraries install karna aur initialize karna (Fixed Step)
       - name: Install & Init Capacitor
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "Vibe Runner Neo" "com.viberunner.neo" --web-dir=www --packagemanager=npm
+          npx cap init "Vibe Runner Neo" "com.viberunner.neo" --web-dir=www
           npx cap add android
 
       # 6. Android SDK tools config aur Gradle permissions set karna
